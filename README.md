@@ -24,6 +24,7 @@ The **Professor-Student Project Collaboration** platform is designed to streamli
 - **Students** and **Professors** create accounts.
 - **Login** system secured by hashed passwords.
 - **Role-based dashboards** for each user type.
+- **Students** can register themseleves filling out a form for login
 
 ### 2. Posting & Managing Projects (Professors)
 - Professors can **create** and **update** project postings.
