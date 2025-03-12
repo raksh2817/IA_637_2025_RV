@@ -8,7 +8,7 @@ A web-based platform that connects **professors** seeking student assistance on 
 1. [Project Topic](#project-topic)
 2. [Outline of Application Purpose (Use Cases)](#outline-of-application-purpose-use-cases)
 3. [ER Diagram](#ER-DIAGRAM)
-4. [Relational Diagram] (#Relational-Diagram)
+4. [Relational Diagram](#Relational-Diagram)
 
 
 ---
