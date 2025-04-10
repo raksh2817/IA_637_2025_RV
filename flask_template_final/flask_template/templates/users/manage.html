@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h2>Manage Users</h2>
+    <div style="margin-bottom: 15px;">
+        <a href="manage?pkval=new" class="btn">+ Create New User</a>
+    </div>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for obj in obj.data %}
+        <tr id="user-row-{{ obj.user_id }}">
+            <td>
+                {% if obj.status == 'pending' %}
+                    <button class="btn-small" onclick="updateStatus({{ obj.user_id }}, 'active')">Approve</button>
+                    <button class="btn-small btn-danger" onclick="updateStatus({{ obj.user_id }}, 'rejected')">Reject</button>
+                {% else %}
+                    <span style="color: green;">{{ obj.status }}</span>
+                {% endif %}
+            </td>
+            <td>{{ obj.email }}</td>
+            <td>{{ obj.user_name }}</td>
+            <td>{{ obj.role }}</td>
+            <td id="status-cell-{{ obj.user_id }}">{{ obj.status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    function updateStatus(user_id, new_status) {
+        fetch(`/users/update_status?user_id=${user_id}&status=${new_status}`)
+            .then(res => res.text())
+            .then(response => {
+                if (response === "success") {
+                    // Update UI
+                    document.getElementById(`status-cell-${user_id}`).textContent = new_status;
+                    document.getElementById(`user-row-${user_id}`).querySelector("td").innerHTML =
+                        `<span style='color: green;'>${new_status}</span>`;
+                } else {
+                    alert("Action failed: " + response);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Error updating user status');
+            });
+    }
+    </script>
+    
+
+{% endblock %}

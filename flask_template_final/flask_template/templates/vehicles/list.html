@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+            <div>
+                
+
+                <div> <a href="manage?pkval=new">Create new</a> </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Edit</th>
+                            <th>Make</th>
+                            <th>Model</th>
+                            <th>Created</th>
+                            <th>User</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for obj in obj.data  %}
+                        <tr>
+                            <td><a href="manage?pkval={{ obj.vid }}">Edit</a></td>
+                            <td>{{ obj.make }}</td>
+                            <td>{{ obj.model }}</td>
+                            <td>{{ obj.created | format_datetime(format='%m-%d-%Y')}}</td>
+                            <td>{{ obj.fname }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+               
+            </div>
+{% endblock %}

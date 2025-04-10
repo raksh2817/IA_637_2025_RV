@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin | CollabApp</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <script src='/static/plotly-2.35.2.min.js'></script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header-bar">
+        <div class="header-left">
+            <a href="/main">College CollabApp</a>
+        </div>
+        <div class="header-right">                
+            <a href="/main">Home</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="page-content">
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+</html>

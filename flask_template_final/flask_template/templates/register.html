@@ -1,0 +1,40 @@
+{% extends "loginbase.html" %}
+
+{% block content %}
+
+<div class="register-container">
+    <h2 class="register-heading">Create Your Account</h2>
+
+    {% if msg %}
+    <div class="register-msg">{{ msg|safe }}</div>
+    {% endif %}
+
+    <form method="POST" action="/register" class="register-form">
+
+        <label class="register-label">Name:</label>
+        <input type="text" name="user_name" class="register-input" value="{{ u.data[0].user_name }}" required>
+
+        <label class="register-label">Email:</label>
+        <input type="email" name="email" class="register-input" value="{{ u.data[0].email }}" required>
+
+        <label class="register-label">Password:</label>
+        <input type="password" name="password" class="register-input" required>
+
+        <label class="register-label">Confirm Password:</label>
+        <input type="password" name="password2" class="register-input" required>
+
+        <label class="register-label">Role:</label>
+        <select name="role" class="register-input" required>
+            {% for r in u.roles %}
+            <option value="{{ r.value }}">{{ r.text }}</option>
+            {% endfor %}
+        </select>
+
+        <input type="submit" value="Register" class="register-button">
+    </form>
+
+    <div class="register-divider">Already have an account?</div>
+    <a href="/login" class="register-link">Back to Login</a>
+</div>
+
+{% endblock %}

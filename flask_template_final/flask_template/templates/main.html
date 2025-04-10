@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-container">
+    <div class="sidebar">
+        <ul>
+            <li><a href="#" onclick="loadContent('/users/manage')">Manage Users</a></li>
+            <li><a href="#" onclick="loadContent('/projects/manage')">Manage Projects</a></li>
+            <li><a href="#" onclick="loadContent('/applications/manage')">Manage Applications</a></li>
+            <li><a href="#" onclick="loadContent('/skills/manage')">Manage Skills</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content" id="main-content">
+        <h1>Welcome, {{ me.user_name }}</h1>
+        <p>Role: {{ me.role }} | User ID: {{ me.user_id }}</p>
+        <hr>
+        <p>Select a section from the sidebar to manage the system.</p>
+    </div>
+</div>
+
+<script>
+function loadContent(url) {
+    fetch(url)
+        .then(res => res.text())
+        .then(html => {
+            document.getElementById("main-content").innerHTML = html;
+        })
+        .catch(err => {
+            document.getElementById("main-content").innerHTML = "<p>Error loading content.</p>";
+        });
+}
+</script>
+
+{% endblock %}

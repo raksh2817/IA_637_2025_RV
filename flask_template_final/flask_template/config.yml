@@ -1,0 +1,12 @@
+db:
+  user: 'ia637'
+  pw: 'ia637clarkson'
+  host: 'mysql.clarksonmsda.org'
+  db: 'ia637'
+  port: 3306
+tables:
+  user: 'RV_User'
+  project: 'RV_Project'
+  application: 'RV_Application'
+  skill: 'RV_Skill'
+

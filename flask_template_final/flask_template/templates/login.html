@@ -1,0 +1,29 @@
+{% extends "loginbase.html" %}
+
+{% block content %}
+
+<div class="login-container">
+    <h2 class="login-heading">Welcome to College CollabApp </h2>
+
+    {% if msg %}
+    <div class="login-msg">{{ msg }}</div>
+    {% endif %}
+
+    <form action="/login" method="POST" class="login-form">
+        <label class="login-label">Email:</label>
+        <input type="text" name="email" class="login-input" placeholder="Enter your email" required>
+
+        <label class="login-label">Password:</label>
+        <input type="password" name="password" class="login-input" placeholder="Enter your password" required>
+
+        <input type="submit" value="Login" class="login-button">
+    </form>
+
+    <div class="login-divider">or</div>
+
+    <form action="/register" method="GET" class="login-form">
+        <input type="submit" value="New User? Register here" class="login-button-secondary">
+    </form>
+</div>
+
+{% endblock %}
