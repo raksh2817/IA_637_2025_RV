@@ -1,8 +1,14 @@
 {% extends "base.html" %}
-
 {% block content %}
-            <div>
-			{{ msg }}<br>
-            <a href="manage">Continue</a>
-			</div>
+
+<div class="page-header">
+    <h2>Application Status</h2>
+</div>
+
+<div class="success-box">
+    <p>{{ msg }}</p>
+</div>
+
+<a href="/projects/browse" class="btn">Back to Projects</a>
+
 {% endblock %}

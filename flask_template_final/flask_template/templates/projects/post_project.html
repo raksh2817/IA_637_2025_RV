@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+  <div class="page-header">
+    <h2>📌 Post New Project</h2>
+  </div>
+
+  {% if msg %}
+    <div class="success-box">{{ msg|safe }}</div>
+  {% endif %}
+
+  <form method="POST" class="project-form">
+
+    <!-- Title -->
+    <div class="form-group">
+      <label for="title">Title:</label>
+      <input type="text" id="title" name="title" value="{{ obj.data[0].title }}" required>
+    </div>
+
+    <!-- Description -->
+    <div class="form-group">
+      <label for="description">Description:</label>
+      <textarea id="description" name="description" rows="4">{{ obj.data[0].description }}</textarea>
+    </div>
+
+    <!-- People Required -->
+    <div class="form-group">
+      <label for="people_required">People Required:</label>
+      <input type="number" id="people_required" name="people_required" value="{{ obj.data[0].people_required }}" required>
+    </div>
+
+    <!-- Deadline -->
+    <div class="form-group">
+      <label for="deadline">Deadline:</label>
+      <input type="date" id="deadline" name="deadline" value="{{ obj.data[0].deadline }}" required>
+    </div>
+
+    <!-- Skills -->
+    <div class="form-group">
+      <label>Required Skills:</label>
+      {% for i in range(1, 6) %}
+        <input type="text" name="skills" placeholder="Skill {{ i }}">
+      {% endfor %}
+    </div>
+
+    <!-- Submit -->
+    <div class="form-group">
+      <button type="submit" class="btn-submit">Post Project</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

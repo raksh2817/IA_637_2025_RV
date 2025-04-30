@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-page">
+  <h2 class="admin-heading">🧠 Admin View: All Skills</h2>
+
+  {% if not skills %}
+    <p class="info-text">No skills found.</p>
+  {% else %}
+    <table class="data-table">
+        <thead>
+            <tr>
+              <th>Skill</th>
+              <th>Linked To</th>
+              <th>Owner</th>
+              <th>Action</th>
+            </tr>
+          </thead>          
+      <tbody>
+        {% for sk in skills %}
+        <tr>
+          <td>{{ sk.skill_name }}</td>
+          <td>
+            {% if sk.project_id and not sk.user_id %}
+              <span class="badge badge-blue">Project Skill</span>
+            {% elif sk.user_id and not sk.project_id %}
+              <span class="badge badge-green">Student Skill</span>
+            {% else %}
+              <span class="badge badge-gray">Unknown</span>
+            {% endif %}
+          </td>
+          
+          <td>
+            {% if sk.user_name %}
+              {{ sk.user_name }}
+            {% elif sk.project_title %}
+              {{ sk.project_title }}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="POST" action="/users/skills/delete" onsubmit="return confirm('Delete this skill?');">
+              <input type="hidden" name="skill_name" value="{{ sk.skill_name }}">
+              <input type="hidden" name="user_id" value="{{ sk.user_id if sk.user_id else '' }}">
+              <input type="hidden" name="project_id" value="{{ sk.project_id if sk.project_id else '' }}">
+              <button type="submit" class="btn-delete">Delete</button>
+            </form>
+          </td>
+          
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+
+{% endblock %}

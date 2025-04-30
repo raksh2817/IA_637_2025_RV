@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h2>Upload Resume</h2>
+</div>
+
+{% if msg %}
+<div class="success-box">{{ msg }}</div>
+{% endif %}
+
+<div class="form-container">
+    <form method="POST" enctype="multipart/form-data">
+        <label class="form-label">Select your resume (PDF or DOCX):</label><br>
+        <input type="file" name="resume" accept=".pdf,.docx" required class="form-input"><br><br>
+
+        <input type="submit" value="Upload" class="btn">
+    </form>
+</div>
+
+{% endblock %}

@@ -4,31 +4,24 @@
 <div class="admin-container">
     <div class="sidebar">
         <ul>
-            <li><a href="#" onclick="loadContent('/projects/post')">Post New Project</a></li>
-            <li><a href="#" onclick="loadContent('/projects/myprojects')">My Projects</a></li>
-            <li><a href="#" onclick="loadContent('/projects/applicants')">View Applicants</a></li>
-        </ul>
+            <li><a href="/projects/post">Post New Project</a></li>
+            <li><a href="/projects/myprojects">My Projects</a></li>
+            <li><a href="/applications/view_for_professor">View Applicants</a></li>
+        </ul>        
     </div>
 
     <div class="main-content" id="main-content">
         <h1>Welcome, {{ me.user_name }}</h1>
         <p>Role: {{ me.role }} </p>
         <hr>
+        {% if msg %}
+        <div class="success-box">{{ msg }}</div>
+        {% endif %}
+
         <p>Use the sidebar to manage your project postings and review applicants.</p>
     </div>
 </div>
 
-<script>
-function loadContent(url) {
-    fetch(url)
-        .then(res => res.text())
-        .then(html => {
-            document.getElementById("main-content").innerHTML = html;
-        })
-        .catch(err => {
-            document.getElementById("main-content").innerHTML = "<p>Error loading content.</p>";
-        });
-}
-</script>
+
 
 {% endblock %}

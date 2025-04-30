@@ -7,7 +7,6 @@ class user(baseObject):
         self.setup()
         
         self.roles = [
-    {'value': 'admin', 'text': 'admin'},
     {'value': 'professor', 'text': 'professor'},
     {'value': 'student', 'text': 'student'}
 ]
@@ -67,8 +66,8 @@ class user(baseObject):
             return False
     def tryLogin(self,email,pw):
         pw = self.hashPassword(pw)
-        sql = f'SELECT * FROM `{self.tn}` WHERE `email` = %s AND `password` = %s;'
-        tokens = [email,pw]
+        sql = f'SELECT * FROM `{self.tn}` WHERE `email` = %s AND `password` = %s ;'
+        tokens = [email,pw,]
         print(sql,tokens)
         self.cur.execute(sql,tokens)
         self.data = []

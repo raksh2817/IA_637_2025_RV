@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+  <div class="page-header">
+    <h2>{% if obj.data[0].project_id %}✏️ Edit Project{% else %}➕ New Project{% endif %}</h2>
+  </div>
+
+  {% if msg %}
+    <div class="error-box">{{ msg|safe }}</div>
+  {% endif %}
+
+  <form method="POST" class="project-form">
+
+    <div class="form-group">
+      <label>Title:</label>
+      <input type="text" name="title" value="{{ obj.data[0].title }}" required>
+    </div>
+
+    <div class="form-group">
+      <label>Description:</label>
+      <textarea name="description" rows="4">{{ obj.data[0].description }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label>People Required:</label>
+      <input type="number" name="people_required" value="{{ obj.data[0].people_required }}" required>
+    </div>
+
+    <div class="form-group">
+      <label>Deadline:</label>
+      <input type="date" name="deadline" value="{{ obj.data[0].deadline }}" required>
+    </div>
+
+    <div class="form-group">
+      <h3>Required Skills:</h3>
+      {% for i in range(5) %}
+        <label>Skill {{ i + 1 }}:</label>
+        <input type="text" name="skills" value="{{ skills[i] if skills and i < skills|length else '' }}">
+      {% endfor %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" name="action" value="Save Project" class="btn-submit">Save Project</button>
+      {% if obj.data[0].project_id %}
+        <button type="submit" name="action" value="Delete Project" class="btn-delete" onclick="return confirm('Are you sure you want to delete this project?');">Delete Project</button>
+      {% endif %}
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}

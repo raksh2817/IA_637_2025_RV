@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-page">
+  <h2 class="admin-heading">🛠 Admin View: All Posted Projects</h2>
+
+  {% if not obj.data %}
+    <p class="info-text">No projects found.</p>
+  {% else %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Description</th>
+          <th>People Needed</th>
+          <th>Deadline</th>
+          <th>Professor</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pr in obj.data %}
+        <tr>
+          <td>{{ pr.title }}</td>
+          <td>{{ pr.description }}</td>
+          <td>{{ pr.people_required }}</td>
+          <td>{{ pr.deadline }}</td>
+          <td><span class="professor-badge">{{ pr.professor_name }}</span></td>
+          <td>
+            <form action="/projects/manage?pkval={{ pr.project_id }}" method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this project?');">
+              <input type="hidden" name="action" value="Delete Project">
+              <button type="submit" class="btn-delete">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+
+{% endblock %}

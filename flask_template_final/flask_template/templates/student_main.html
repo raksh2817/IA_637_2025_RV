@@ -4,31 +4,35 @@
 <div class="admin-container">
     <div class="sidebar">
         <ul>
-            <li><a href="#" onclick="loadContent('/projects/browse')">Browse Projects</a></li>
-            <li><a href="#" onclick="loadContent('/applications/mine')">My Applications</a></li>
-            <li><a href="#" onclick="loadContent('/profile/skills')">My Skills</a></li>
-        </ul>
+            <li><a href='/projects/browse'>Browse Projects</a></li>
+            <li><a href='/applications/mine'>My Applications</a></li>
+            <li><a href='/student/my_skills'>My Skills</a></li>
+            <li><a href='/student/upload_resume'>Upload Resume</a></li>  
+        </ul>        
     </div>
 
     <div class="main-content" id="main-content">
-        <h1>Welcome, {{ me.user_name }}</h1>
-        <p>Role: {{ me.role }} | User ID: {{ me.user_id }}</p>
-        <hr>
-        <p>Explore opportunities and manage your profile using the sidebar.</p>
-    </div>
+        <div class="page-header">
+            <h1>Welcome, {{ me.user_name }}</h1>
+            <p>Role: {{ me.role }} | Your Unique ID: {{ me.user_id }}</p>
+            <hr>
+        
+            {% if resume_path and resume_path.endswith('.pdf') %}
+            <div class="resume-box">
+                <p><strong>Your Resume:</strong></p>
+                <iframe src="/static/{{ resume_path }}" width="100%" height="600px" style="border: 1px solid #ccc;"></iframe>
+            </div>
+            {% elif resume_path %}
+            <div class="resume-box">
+                <p><strong>Resume is uploaded but not viewable (must be PDF).</strong></p>
+            {% else %}
+            <div class="resume-box">
+                <p><strong>No Resume Uploaded Yet.</strong></p>
+                <a href="/student/upload_resume" class="btn-small">Upload Resume</a>
+            </div>
+            {% endif %}            
+        </div>        
 </div>
 
-<script>
-function loadContent(url) {
-    fetch(url)
-        .then(res => res.text())
-        .then(html => {
-            document.getElementById("main-content").innerHTML = html;
-        })
-        .catch(err => {
-            document.getElementById("main-content").innerHTML = "<p>Error loading content.</p>";
-        });
-}
-</script>
 
 {% endblock %}

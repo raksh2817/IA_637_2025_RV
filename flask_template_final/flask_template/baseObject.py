@@ -53,6 +53,8 @@ class baseObject:
         vals = vals[0:-2]
         sql += ') VALUES '
         sql += f'({vals});'
+        print("SQL TO EXECUTE: ",sql)
+        print("VALUES: ",tokens)
         #print(sql,tokens)
         self.cur.execute(sql,tokens)
         self.data[0][self.pk] = self.cur.lastrowid
@@ -100,3 +102,16 @@ class baseObject:
         for field in self.fields:
             d[field] = ''
         self.set(d)
+        
+    def getByRole(self, allowed_roles):
+            placeholders = ','.join(['%s'] * len(allowed_roles))
+            sql = f"SELECT * FROM `{self.tn}` WHERE `role` IN ({placeholders})"
+            self.cur.execute(sql, allowed_roles)
+            self.data = []
+            for row in self.cur:
+              self.data.append(row)
+        
+
+
+    
+

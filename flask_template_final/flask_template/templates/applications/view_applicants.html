@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title"> Applicants for Your Projects</h2>
+
+  {% if not applications %}
+    <p class="info-text">No applications received yet.</p>
+  {% endif %}
+
+  {% set current_project = None %}
+  {% for app in applications %}
+    {% if current_project != app.project_id %}
+      {% if not loop.first %}</tbody></table>{% endif %}
+      <div class="project-card">
+        <h3 class="project-title">{{ app.project_title }}</h3>
+        <table class="applicants-table">
+          <thead>
+            <tr>
+              <th>Applicant</th>
+              <th>Skills</th>
+              <th>Skill Match</th>
+              <th>Status</th>
+              <th>Resume</th>
+              <th>Update Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      {% set current_project = app.project_id %}
+    {% endif %}
+
+    <tr>
+      <td>{{ app.applicant_name }}</td>
+      
+      <td>
+        {% if app.skills %}
+          {{ app.skills | join(', ') }}
+        {% else %}
+          <span class="text-muted">No Skills</span>
+        {% endif %}
+      </td>
+      <td>{{ app.skill_match }}%
+      </td>
+      
+    
+      <td>
+        <span class="status-label {{ app.status }}">{{ app.status.capitalize() }}</span>
+      </td>
+    
+      <td>
+        {% if app.resume_path %}
+        <a href="/static/{{ app.resume_path }}" class="btn-resume" target="_blank">View Resume</a>
+        {% else %}
+          <span class="text-muted">No Resume</span>
+        {% endif %}
+      </td>
+    
+      <td>
+        <form method="POST" action="{{ url_for('update_application_status') }}" class="status-form">
+          <input type="hidden" name="app_id" value="{{ app.app_id }}">
+          <select name="status" class="dropdown">
+            <option value="pending" {% if app.status == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="accepted" {% if app.status == 'accepted' %}selected{% endif %}>Accepted</option>
+            <option value="rejected" {% if app.status == 'rejected' %}selected{% endif %}>Rejected</option>
+          </select>
+          <button type="submit" class="btn-save">Save</button>
+        </form>
+      </td>
+    </tr>
+    
+
+    {% if loop.last %}</tbody></table></div>{% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

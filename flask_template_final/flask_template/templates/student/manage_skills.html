@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h2>Manage My Skills</h2>
+</div>
+
+{% if msg %}
+<div class="success-box">{{ msg }}</div>
+{% endif %}
+
+{% if skills %}
+<div class="current-skills">
+    <p><strong>Your Current Skills:</strong></p>
+    <ul class="skill-list">
+        {% for skill in skills %}
+        <li>{{ skill }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<p><em>You have not added any skills yet.</em></p>
+{% endif %}
+
+<hr>
+
+<form method="POST">
+    <p>You can enter up to 5 skills:</p>
+
+    {% for i in range(5) %}
+        <label>Skill {{ i+1 }}:</label><br>
+        <input type="text" name="skills" value="{{ skills[i] if i < skills|length else '' }}"><br><br>
+    {% endfor %}
+
+    <input type="submit" value="Save Skills">
+</form>
+
+{% endblock %}

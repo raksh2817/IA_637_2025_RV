@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h2>Browse Projects</h2>
+</div>
+
+{% if obj.data|length == 0 %}
+<p>No projects available at the moment.</p>
+{% else %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Professor</th>
+            <th>Required Skills</th>
+            <th>Description</th>
+            <th>Deadline</th>
+            <th>Apply</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in obj.data %}
+        <tr>
+            <td>{{ row.title }}</td>
+            <td>{{ row.posted_by_name }}</td>
+            <td>{{ row.skills | join(', ') }}</td>
+            <td>{{ row.description }}</td>
+            <td>{{ row.deadline }}</td>
+            <td>
+                <a href="/projects/apply?pid={{ row.project_id }}" class="btn-small">Apply</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

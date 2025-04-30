@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h2>My Applications</h2>
+</div>
+
+{% if obj.data|length == 0 %}
+<p>You have not applied to any projects yet.</p>
+{% else %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Project</th>
+            <th>Professor</th>
+            <th>Deadline</th>
+            <th>Status</th>
+            <th>Date Applied</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for app in obj.data %}
+        <tr>
+            <td>{{ app.title }}</td>
+            <td>{{ app.professor }}</td>
+            <td>{{ app.deadline }}</td>
+            <td>{{ app.status }}</td>
+            <td>{{ app.app_date }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}
