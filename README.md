@@ -1,7 +1,7 @@
-# 🚀 Collaborative Project Management Portal
+# 🚀 COLLEGE COLLAB APP 
 
 ## 👥 Group Name & Members
-**Group Name:** IA637 DataDev Team  
+**Group Name:** IA_637_2025_RV
 
 | Name              | Role       |
 | ----------------- |------------------ |
