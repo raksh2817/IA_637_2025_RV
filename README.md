@@ -38,7 +38,7 @@ Built with:
 
 ## 🗺️ Relational Diagram
 
-![Relational Diagram](assets/images/relational_diagram.png)
+![Relational Diagram](College_CollabApp\relational_diagram.png)
 
 ---
 
