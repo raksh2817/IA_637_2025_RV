@@ -44,7 +44,6 @@ Built with:
 
 ## 📊 Analytical Queries
 
-Use these sample SQL queries to demonstrate reporting capabilities:
 
 ```sql
 -- 1. Count of projects per professor
