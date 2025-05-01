@@ -3,10 +3,10 @@
 ## 👥 Group Name & Members
 **Group Name:** IA637 DataDev Team  
 
-| Name              | Student ID | Role                |
-| ----------------- | ---------- | ------------------- |
-| Rakshith Srinath  | 1001       | Backend Developer   |
-| Bhavana Patel     | 1002       | Frontend Developer  |
+| Name              | Role       |
+| ----------------- |------------------ |
+| Rakshith Srinath  | Backend Developer   |
+| Vardhan           | Frontend Developer  |
 
 ---
 
