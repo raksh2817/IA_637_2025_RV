@@ -38,7 +38,7 @@ Built with:
 
 ## 🗺️ Relational Diagram
 
-![Relational Diagram](flask_template/relational_diagram.png)
+![Relational Diagram](assets/images/relational_diagram.png)
 
 ---
 
