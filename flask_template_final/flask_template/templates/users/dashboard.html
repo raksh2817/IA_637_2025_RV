@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-page">
+  <h2 class="admin-heading">📊 Admin Dashboard</h2>
+
+  <div class="dashboard-grid">
+
+    <div class="dashboard-section">
+      <h3>Total Users</h3>
+      <p>{{ data.user_count }}</p>
+      <ul>
+        <li><strong>Students:</strong> {{ data.student_count }}</li>
+        <li><strong>Professors:</strong> {{ data.professor_count }}</li>
+      </ul>
+    </div>
+
+    <div class="dashboard-section">
+      <h3>Total Projects</h3>
+      <p>{{ data.total_projects }}</p>
+    </div>
+
+    <div class="dashboard-section">
+      <h3>Top 5 Skills</h3>
+      <ul>
+        {% for skill in data.top_skills %}
+          <li>{{ skill.skill_name }} <span class="badge-gray">{{ skill.count }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="dashboard-section">
+      <h3>Projects Posted per Professor</h3>
+      <ul>
+        {% for prof in data.projects_per_professor %}
+          <li>{{ prof.user_name }} — {{ prof.count }} project(s)</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="dashboard-section full-width">
+      <h3>Application Status Count</h3>
+      <ul>
+        {% for app in data.application_status %}
+          <li>{{ app.status.capitalize() }}: {{ app.count }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

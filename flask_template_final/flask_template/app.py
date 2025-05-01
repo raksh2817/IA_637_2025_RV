@@ -1,35 +1,63 @@
-from flask import Flask
-from flask import render_template
-from flask import request,session, redirect, url_for, send_from_directory,make_response 
+'''
+app.py
+
+Main Flask application for managing users, projects, skills, and applications.
+''' 
+#===============================================================================
+# Standard library imports
+#===============================================================================
+import os
+import time
+import datetime
+from datetime import timedelta
+
+#===============================================================================
+# Third-party imports
+#===============================================================================
+from flask import (
+    Flask, render_template, request, session,
+    redirect, url_for, send_from_directory
+)
 from flask_session import Session
+from werkzeug.utils import secure_filename
+
+#===============================================================================
+# Local application imports
+#===============================================================================
 from project import project
 from skill_model import skill
 from application import application
-from datetime import timedelta
 from user import user
-import os
-from werkzeug.utils import secure_filename
-import time
-import datetime
 
-app = Flask(__name__,static_url_path='')
+#===============================================================================
+# Application setup
+#===============================================================================
+app = Flask(__name__, static_url_path='')
 
+# Session and secret key configuration
 app.config['SECRET_KEY'] = '5sdghsgRTg'
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=5)
+
+# Initialize server-side session handling
 sess = Session()
 sess.init_app(app)
 
-@app.route('/')
-def home():
-    return redirect('/login')
-
+#===============================================================================
+# Jinja2 template filters and context processors
+#===============================================================================
 @app.context_processor
 def inject_user():
+    """Inject the current user into all templates as 'me'."""
     return dict(me=session.get('user'))
 
+
 def format_datetime(value, format='%Y-%m-%d %H:%M:%S'):
+    """
+    Jinja2 filter to format datetime objects in templates.
+    Returns empty string if value is None or not a datetime.
+    """
     if value is None:
         return ''
     try:
@@ -39,658 +67,488 @@ def format_datetime(value, format='%Y-%m-%d %H:%M:%S'):
 
 app.jinja_env.filters['format_datetime'] = format_datetime
 
+#===============================================================================
+# Utility functions
+#===============================================================================
+def checkSession():
+    """
+    Verify if the user session is still active.
+    If inactive for more than 500 seconds, mark session timed out.
+    """
+    if 'active' in session:
+        elapsed = time.time() - session['active']
+        if elapsed > 500:
+            session['msg'] = 'Your session has timed out.'
+            return False
+        session['active'] = time.time()
+        return True
+    return False
+
+#===============================================================================
+# Route handlers
+#===============================================================================
+@app.route('/')
+def home():
+    """Redirect to login page."""
+    return redirect('/login')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.form.get('email') is not None and request.form.get('password') is not None:
+    """
+    Handle user login. Validates credentials, checks status,
+    and stores user info in session.
+    """
+    if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
         print("FORM Submitted:", email, password)
 
         u = user()
-        print("Running tryLogin()...")
-        
         if u.tryLogin(email, password):
-            print("Login successful. User data:", u.data)
-
             user_data = u.data[0]
-
-            # Check user status
             if user_data['status'] == 'pending':
-                print("Login denied. Account status is pending.")
-                return render_template('login.html', title='Login', msg='Your account is pending admin approval. Please try again later.')
-
-            # If approved, proceed to login
+                return render_template(
+                    'login.html', title='Login',
+                    msg='Your account is pending admin approval. Please try again later.'
+                )
             session['user'] = user_data
             session['active'] = time.time()
-            print("User logged in successfully. Redirecting to /main.")
             return redirect('/main')
-        else:
-            print("Login failed. Invalid credentials.")
-            return render_template('login.html', title='Login', msg='Incorrect username or password.')
 
-    else:
-        print("No form submission. Showing login page.")
-        if 'msg' not in session.keys() or session['msg'] is None:
-            m = 'Type your email and password to continue.'
-        else:
-            m = session['msg']
-            session['msg'] = None
-        return render_template('login.html', title='Login', msg=m)
-   
-    
-@app.route('/logout',methods = ['GET','POST'])
+        return render_template(
+            'login.html', title='Login',
+            msg='Incorrect username or password.'
+        )
+
+    msg = session.pop('msg', 'Type your email and password to continue.')
+    return render_template('login.html', title='Login', msg=msg)
+
+@app.route('/logout', methods=['GET','POST'])
 def logout():
-    if session.get('user') is not None:
-        del session['user']
-        del session['active']
+    """Log out the current user and clear session data."""
+    session.pop('user', None)
+    session.pop('active', None)
     return render_template('login.html', title='Login', msg='You have logged out.')
+
 @app.route('/main')
 def main():
-    if checkSession() == False: 
+    """Render main menu based on user role."""
+    if not checkSession():
         return redirect('/login')
-    
-    if session['user']['role'] == 'admin':
-        return render_template('main.html', title='Main menu') 
-    elif session['user']['role'] == 'professor':
+    role = session['user']['role']
+    if role == 'admin':
+        return render_template('main.html', title='Main menu')
+    if role == 'professor':
         return render_template('professor_main.html', title='Main menu')
-    elif session['user']['role'] == 'student':
+    if role == 'student':
         uid = session['user']['user_id']
         u = user()
         u.getById(uid)
         resume_path = u.data[0].get('resume_path')
-        return render_template('student_main.html', title='Main menu',me=u.data[0], resume_path=resume_path)
-    else:
-        return render_template('main.html', title='Main menu')
-    
+        return render_template(
+            'student_main.html', title='Main menu',
+            me=u.data[0], resume_path=resume_path
+        )
+    return render_template('main.html', title='Main menu')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """
+    User registration. Creates new user with 'pending' status
+    and awaits admin approval.
+    """
     u = user()
-    u.createBlank()  # Initializes u.data[0] with default fields
+    u.createBlank()
     msg = ''
-
     if request.method == 'POST':
         data = request.form.to_dict()
-        print("Form Data Submitted:", data)
-        # Set required system fields
         data['status'] = 'pending'
         data['date_of_creation'] = datetime.date.today()
         u.set(data)
-        if u.data:
-            print("u.data[0] after set:", u.data[0])
-        else:
-            print("u.data is empty after set.")
-        print(" Data bound to user object:", u.data[0])
         if u.verify_new():
             u.insert()
-            return render_template("ok_dialog.html", msg=" Registration successful! Await admin approval.")
-        else:
-            msg = "<br>".join(u.errors)
-            print("Validation Errors:", u.errors)
-
+            return render_template(
+                'ok_dialog.html',
+                msg=" Registration successful! Await admin approval."
+            )
+        msg = '<br>'.join(u.errors)
     return render_template('register.html', u=u, msg=msg)
 
-
-
-@app.route('/users/manage',methods=['GET','POST'])
+#-------------------------------------------------------------------------------
+# Admin user management
+#-------------------------------------------------------------------------------
+@app.route('/users/manage', methods=['GET', 'POST'])
 def manage_user():
-    if checkSession() == False or session['user']['role'] != 'admin': 
+    """Admin view to list, add, update, or delete users."""
+    if not checkSession() or session['user']['role'] != 'admin':
         return redirect('/login')
     o = user()
     action = request.args.get('action')
     pkval = request.args.get('pkval')
-    if action is not None and action == 'delete': #action=delete&pkval=123
-        o.deleteById(request.args.get('pkval'))
-        return render_template('ok_dialog.html',msg= "Deleted.")
-    if action is not None and action == 'insert':
-        d = {}
-        d['fname'] = request.form.get('fname')
-        d['email'] = request.form.get('email')
-        d['role'] = request.form.get('role')
-        d['password'] = request.form.get('password')
-        d['password2'] = request.form.get('password2')
+    if action == 'delete':
+        o.deleteById(pkval)
+        return render_template('ok_dialog.html', msg="Deleted.")
+    if action == 'insert':
+        d = {k: request.form.get(k) for k in ['fname','email','role','password','password2']}
         o.set(d)
         if o.verify_new():
-            #print(o.data)
             o.insert()
-            return render_template('ok_dialog.html',msg= "User added.")
-        else:
-            return render_template('users/add.html',obj = o)
-    if action is not None and action == 'update':
+            return render_template('ok_dialog.html', msg="User added.")
+        return render_template('users/add.html', obj=o)
+    if action == 'update':
         o.getById(pkval)
-        o.data[0]['fname'] = request.form.get('fname')
-        o.data[0]['email'] = request.form.get('email')
-        o.data[0]['role'] = request.form.get('role')
-        o.data[0]['password'] = request.form.get('password')
-        o.data[0]['password2'] = request.form.get('password2')
+        for field in ['fname','email','role','password','password2']:
+            o.data[0][field] = request.form.get(field)
         if o.verify_update():
             o.update()
-            return render_template('ok_dialog.html',msg= "User updated. ")
-        else:
-            return render_template('users/manage.html',obj = o)
-    if pkval is None:
-        o.getByRole(['student','professor'])
-        return render_template('users/manage_user.html',obj = o)
+            return render_template('ok_dialog.html', msg="User updated.")
+        return render_template('users/manage.html', obj=o)
+    if not pkval:
+        o.getByRole(['student', 'professor'])
+        return render_template('users/manage_user.html', obj=o)
     if pkval == 'new':
         o.createBlank()
-        return render_template('users/add.html',obj = o)
-    else:
-        print(pkval)
-        o.getById(pkval)
-        return render_template('users/manage.html',obj = o)
-    
+        return render_template('users/add.html', obj=o)
+    o.getById(pkval)
+    return render_template('users/manage.html', obj=o)
+
 @app.route('/users/update_status', methods=['POST'])
 def update_status():
-    if checkSession() == False or session['user']['role'] != 'admin':
+    """Admin endpoint to approve or reject user registrations."""
+    if not checkSession() or session['user']['role'] != 'admin':
         return redirect('/login')
-
     user_id = request.form.get('user_id')
     new_status = request.form.get('status')
-
-    print("Updating user:", user_id, "→", new_status)
-
     if not user_id or new_status not in ['active', 'rejected']:
         return redirect('/users/manage')
-
     u = user()
     u.getById(user_id)
-
     if not u.data:
-        print("User not found")
         return redirect('/users/manage')
-
     u.data[0]['status'] = new_status
     u.update()
-
-    print("Status updated successfully.")
     return redirect('/users/manage')
 
-    
-##############################################################################3
-###################              PROJECTS                #######################
-############################################################################
-
+#===============================================================================
+# Professor project management
+#===============================================================================
 @app.route('/projects/post', methods=['GET', 'POST'])
 def post_project():
-    if checkSession() == False or session['user']['role'] != 'professor':
+    """Allow professors to post new projects with associated skills."""
+    if not checkSession() or session['user']['role'] != 'professor':
         return redirect('/login')
-
     p = project()
     msg = ''
-
     if request.method == 'POST':
         data = request.form.to_dict()
-        data['posted_by'] = session['user']['user_id']
-        data['date_posted'] = datetime.date.today()
-
+        data.update({'posted_by': session['user']['user_id'], 'date_posted': datetime.date.today()})
         p.set(data)
-
         if p.verify_new():
             p.insert()
-            project_id = p.data[0]['project_id']  # Get inserted project ID
-
-            skill_names = request.form.getlist("skills")
-            for skill_name in skill_names:
-                if skill_name.strip():
+            pid = p.data[0]['project_id']
+            for name in request.form.getlist('skills'):
+                if name.strip():
                     s = skill()
-                    s.set({
-                        'skill_name': skill_name.strip(),
-                        'project_id': project_id,
-                        'user_id': None
-                    })
+                    s.set({'skill_name': name.strip(), 'project_id': pid, 'user_id': None})
                     s.insert()
-
-
-
-            return render_template("professor_main.html", msg="Project posted successfully.")
-        else:
-            msg = "<br>".join(p.errors)
+            msg = "Project posted successfully."
+            return render_template('professor_main.html', msg=msg)
+        msg = '<br>'.join(p.errors)
     else:
-        p.createBlank()  
-
+        p.createBlank()
     return render_template('projects/post_project.html', obj=p, msg=msg)
-
-
 
 @app.route('/projects/myprojects')
 def view_my_projects():
-    if checkSession() == False or session['user']['role'] not in ['professor', 'admin']:
+    """List projects posted by the current professor or all for admins."""
+    if not checkSession() or session['user']['role'] not in ['professor','admin']:
         return redirect('/login')
-
     p = project()
     if session['user']['role'] == 'admin':
         p.cur.execute("SELECT * FROM RV_Project ORDER BY date_posted DESC")
         p.data = p.cur.fetchall()
     else:
-         p.getByField('posted_by', session['user']['user_id'])
-
+        p.getByField('posted_by', session['user']['user_id'])
     return render_template('projects/my_project.html', obj=p)
-
 
 @app.route('/projects/manage', methods=['GET', 'POST'])
 def manage_project():
-    if checkSession() == False or session['user']['role'] not in ['professor', 'admin']:
+    """Edit or delete existing projects and their skills."""
+    if not checkSession() or session['user']['role'] not in ['professor','admin']:
         return redirect('/login')
-
-    p = project()
-    msg = ''
-    pkval = request.args.get('pkval')
-
-    # INITIAL LOAD
-    if pkval == 'new':
-        p.createBlank()
-        skills = []
+    p = project(); msg = ''
+    pk = request.args.get('pkval')
+    # Load existing data or initialize blank
+    if pk == 'new':
+        p.createBlank(); skills = []
     else:
-        p.getById(pkval)
+        p.getById(pk)
         s = skill()
-        s.cur.execute("SELECT skill_name FROM RV_Skill WHERE project_id = %s AND user_id IS NULL LIMIT 5", [pkval])
-        skills = [row['skill_name'] for row in s.cur.fetchall()]
-
-    # FORM SUBMISSION
+        s.cur.execute("SELECT skill_name FROM RV_Skill WHERE project_id=%s AND user_id IS NULL LIMIT 5", [pk])
+        skills = [r['skill_name'] for r in s.cur.fetchall()]
     if request.method == 'POST':
         action = request.form.get('action')
-
         if action == 'Delete Project':
-            a = application()
-            a.cur.execute("DELETE FROM RV_Application WHERE project_id = %s", [pkval])
-            p.deleteById(pkval)
-            redirect_path = '/users/projects' if session['user']['role'] == 'admin' else '/projects/myprojects'
-            return redirect(redirect_path)
-
-        # Save Project
+            a = application(); a.cur.execute("DELETE FROM RV_Application WHERE project_id=%s", [pk])
+            p.deleteById(pk)
+            return redirect('/users/projects' if session['user']['role']=='admin' else '/projects/myprojects')
         data = request.form.to_dict()
-        data['posted_by'] = session['user']['user_id']
-        data['date_posted'] = datetime.date.today()
-
-        if pkval != 'new':
-            data['project_id'] = pkval
-
+        data.update({'posted_by': session['user']['user_id'], 'date_posted': datetime.date.today()})
+        if pk != 'new': data['project_id'] = pk
         p.set(data)
-
         if p.verify_new():
-            if pkval == 'new':
-                p.insert()
-                project_id = p.data[0]['project_id']
-            else:
-                p.data[0]['project_id'] = pkval
-                p.update()
-                project_id = pkval
-
-            # ✅ Update project skills
-            s = skill()
-            s.cur.execute("DELETE FROM RV_Skill WHERE project_id = %s AND user_id IS NULL", [project_id])
-            skill_inputs = request.form.getlist("skills")
-            count = 0
-            for name in skill_inputs:
-                name = name.strip()
-                if name:
-                    count += 1
-                    if count > 5:
-                        break
-                    s.set({
-                        'skill_name': name,
-                        'project_id': project_id,
-                        'user_id': None
-                    })
-                    s.insert()
-
-            # ✅ Final redirect
-            redirect_path = '/users/projects' if session['user']['role'] == 'admin' else '/projects/myprojects'
-            return redirect(redirect_path)
-        else:
-            msg = "<br>".join(p.errors)
-
+            if pk=='new': p.insert(); pid = p.data[0]['project_id']
+            else: p.update(); pid = pk
+            # Refresh skills
+            s = skill(); s.cur.execute("DELETE FROM RV_Skill WHERE project_id=%s AND user_id IS NULL", [pid])
+            for i,name in enumerate(request.form.getlist('skills')):
+                name=name.strip();
+                if name and i<5:
+                    s.set({'skill_name':name,'project_id':pid,'user_id':None}); s.insert()
+            return redirect('/users/projects' if session['user']['role']=='admin' else '/projects/myprojects')
+        msg = '<br>'.join(p.errors)
     return render_template('projects/manage_project.html', obj=p, msg=msg, skills=skills)
-
-
 
 @app.route('/projects/browse')
 def browse_projects():
-    if checkSession() == False or session['user']['role'] != 'student':
+    """Allow students to browse and see available projects."""
+    if not checkSession() or session['user']['role']!='student':
         return redirect('/login')
-
     p = project()
     p.cur.execute("""
         SELECT p.*, u.user_name AS posted_by_name
-        FROM RV_Project p
-        JOIN RV_User u ON p.posted_by = u.user_id
+        FROM RV_Project p JOIN RV_User u ON p.posted_by=u.user_id
         ORDER BY p.date_posted DESC
     """)
     p.data = p.cur.fetchall()
-
-    # For each project, fetch its skills
-    for row in p.data:
-        s = skill()
-        s.cur.execute("""
-            SELECT skill_name FROM RV_Skill
-            WHERE project_id = %s AND user_id IS NULL
-            LIMIT 5
-        """, [row['project_id']])
-        skills = s.cur.fetchall()
-        row['skills'] = [sk['skill_name'] for sk in skills]
-
+    for r in p.data:
+        s = skill(); s.cur.execute("SELECT skill_name FROM RV_Skill WHERE project_id=%s AND user_id IS NULL LIMIT 5", [r['project_id']])
+        r['skills'] = [sk['skill_name'] for sk in s.cur.fetchall()]
     return render_template('projects/browse_projects.html', obj=p)
-
 
 @app.route('/projects/apply')
 def apply_to_project():
-    if checkSession() == False or session['user']['role'] != 'student':
+    """Students apply to projects, preventing duplicate applications."""
+    if not checkSession() or session['user']['role']!='student':
         return redirect('/login')
-
-    pid = request.args.get('pid')
-    uid = session['user']['user_id']
-
-    # Check if already applied to this project
+    pid = request.args.get('pid'); uid = session['user']['user_id']
     a = application()
-    a.cur.execute("""
-        SELECT * FROM RV_Application
-        WHERE project_id = %s AND applicant_id = %s
-    """, [pid, uid])
-    
+    a.cur.execute("SELECT * FROM RV_Application WHERE project_id=%s AND applicant_id=%s", [pid,uid])
     if a.cur.fetchone():
-        return render_template("ok_dialog.html", msg="You have already applied to this project.")
-
-    # Insert new application
-    a.set({
-        'project_id': pid,
-        'applicant_id': uid,
-        'app_date': datetime.date.today(),
-        'status': 'pending'
-    })
+        return render_template('ok_dialog.html', msg="You have already applied to this project.")
+    a.set({'project_id':pid,'applicant_id':uid,'app_date':datetime.date.today(),'status':'pending'})
     a.insert()
+    return render_template('ok_dialog.html', msg="Application submitted successfully.")
 
-    return render_template("ok_dialog.html", msg="Application submitted successfully.")
-
-
-
-
-########################### UPLOAD RESUME ################################
-
-ALLOWED_EXTENSIONS = {'pdf', 'docx'}
-UPLOAD_FOLDER = os.path.join('static', 'resumes')
-
-@app.route('/student/upload_resume', methods=['GET', 'POST'])
+#===============================================================================
+# Resume upload (students)
+#===============================================================================
+ALLOWED_EXTENSIONS = {'pdf','docx'}
+UPLOAD_FOLDER = os.path.join('static','resumes')
+@app.route('/student/upload_resume', methods=['GET','POST'])
 def upload_resume():
-    if checkSession() == False or session['user']['role'] != 'student':
+    """Allow students to upload resume files (PDF/DOCX)."""
+    if not checkSession() or session['user']['role']!='student':
         return redirect('/login')
-
     msg = ''
-    user_id = session['user']['user_id']
-    user_dir = os.path.join(UPLOAD_FOLDER, str(user_id))
+    uid = session['user']['user_id']
+    user_dir = os.path.join(UPLOAD_FOLDER,str(uid))
     os.makedirs(user_dir, exist_ok=True)
-
-    if request.method == 'POST':
+    if request.method=='POST':
         file = request.files.get('resume')
         if not file:
             msg = "No file selected."
         else:
             filename = secure_filename(file.filename)
-            ext = filename.rsplit('.', 1)[-1].lower()
+            ext = filename.rsplit('.',1)[-1].lower()
             if ext not in ALLOWED_EXTENSIONS:
                 msg = "Only PDF or DOCX files are allowed."
             else:
-                save_path = os.path.join(user_dir, filename)
+                save_path = os.path.join(user_dir,filename)
                 file.save(save_path)
-
-                # Save path in DB (relative to static)
-                rel_path = os.path.join('resumes', str(user_id), filename)
-
-                u = user()
-                u.getById(user_id)
-                u.data[0]['resume_path'] = rel_path
-                u.update()
-
+                rel_path = os.path.join('resumes',str(uid),filename)
+                u = user(); u.getById(uid)
+                u.data[0]['resume_path'] = rel_path; u.update()
                 msg = "Resume uploaded successfully."
+    return render_template('student/upload_resume.html', msg=msg)
 
-    return render_template("student/upload_resume.html", msg=msg)
-
-
-############### VIEW APPLICATIONS ###########################
+#===============================================================================
+# Application views
+#===============================================================================
 @app.route('/applications/mine')
 def my_applications():
-    if checkSession() == False or session['user']['role'] != 'student':
-        return redirect('/login')
-
-    uid = session['user']['user_id']
-    a = application()
-
+    """Students view their own applications."""
+    if not checkSession() or session['user']['role']!='student': return redirect('/login')
+    uid = session['user']['user_id']; a = application()
     a.cur.execute("""
         SELECT a.*, p.title, p.deadline, u.user_name AS professor
         FROM RV_Application a
-        JOIN RV_Project p ON a.project_id = p.project_id
-        JOIN RV_User u ON p.posted_by = u.user_id
-        WHERE a.applicant_id = %s
+        JOIN RV_Project p ON a.project_id=p.project_id
+        JOIN RV_User u ON p.posted_by=u.user_id
+        WHERE a.applicant_id=%s
         ORDER BY a.app_date DESC
     """, [uid])
-
     a.data = a.cur.fetchall()
-    return render_template("applications/my_applications.html", obj=a)
+    return render_template('applications/my_applications.html', obj=a)
 
-
-@app.route('/applications/manage', methods=['GET', 'POST'])
+@app.route('/applications/manage', methods=['GET','POST'])
 def admin_applications():
-    if checkSession() == False or session['user']['role'] != 'admin':
-        return redirect('/login')
-
+    """Admin view of all applications across projects."""
+    if not checkSession() or session['user']['role']!='admin': return redirect('/login')
     a = application()
-
-    # Fetch all applications with related project and student info
     a.cur.execute("""
         SELECT a.app_id, a.status, a.app_date,
                p.title AS project_title,
                u.user_name AS student_name
         FROM RV_Application a
-        JOIN RV_Project p ON a.project_id = p.project_id
-        JOIN RV_User u ON a.applicant_id = u.user_id
+        JOIN RV_Project p ON a.project_id=p.project_id
+        JOIN RV_User u ON a.applicant_id=u.user_id
         ORDER BY a.app_date DESC
     """)
     a.data = a.cur.fetchall()
+    return render_template('users/manage_applications.html', obj=a)
 
-    return render_template("users/manage_applications.html", obj=a)
-
-
+#===============================================================================
+# Admin project & skill overviews
+#===============================================================================
 @app.route('/users/projects')
 def admin_view_projects():
-    if checkSession() == False or session['user']['role'] != 'admin':
-        return redirect('/login')
-
+    """Admin overview of all posted projects."""
+    if not checkSession() or session['user']['role']!='admin': return redirect('/login')
     p = project()
-    # Fetch all projects with professor info
     p.cur.execute("""
         SELECT p.*, u.user_name AS professor_name
         FROM RV_Project p
-        JOIN RV_User u ON p.posted_by = u.user_id
+        JOIN RV_User u ON p.posted_by=u.user_id
         ORDER BY p.date_posted DESC
     """)
     p.data = p.cur.fetchall()
-
-    return render_template("users/manage_projects.html", obj=p)
+    return render_template('users/manage_projects.html', obj=p)
 
 @app.route('/users/skills')
 def admin_view_skills():
-    if checkSession() == False or session['user']['role'] != 'admin':
-        return redirect('/login')
-
+    """Admin overview of all skills across users and projects."""
+    if not checkSession() or session['user']['role']!='admin': return redirect('/login')
     s = skill()
     s.cur.execute("""
         SELECT sk.skill_name, sk.project_id, sk.user_id,
                u.user_name AS user_name,
                p.title AS project_title
         FROM RV_Skill sk
-        LEFT JOIN RV_User u ON sk.user_id = u.user_id
-        LEFT JOIN RV_Project p ON sk.project_id = p.project_id
+        LEFT JOIN RV_User u ON sk.user_id=u.user_id
+        LEFT JOIN RV_Project p ON sk.project_id=p.project_id
         ORDER BY sk.skill_name
     """)
     skills = s.cur.fetchall()
-
-    return render_template("users/manage_skills.html", skills=skills)
-
+    return render_template('users/manage_skills.html', skills=skills)
 
 @app.route('/users/skills/delete', methods=['POST'])
 def delete_skill():
-    if checkSession() == False or session['user']['role'] != 'admin':
-        return redirect('/login')
-
-    skill_name = request.form.get('skill_name')
-    user_id = request.form.get('user_id') or None
-    project_id = request.form.get('project_id') or None
-
+    """Delete a specific skill entry by user or project."""
+    if not checkSession() or session['user']['role']!='admin': return redirect('/login')
+    name = request.form.get('skill_name')
+    uid = request.form.get('user_id') or None
+    pid = request.form.get('project_id') or None
     s = skill()
-
-    if user_id and not project_id:
-        s.cur.execute("DELETE FROM RV_Skill WHERE skill_name = %s AND user_id = %s AND project_id IS NULL", [skill_name, user_id])
-    elif project_id and not user_id:
-        s.cur.execute("DELETE FROM RV_Skill WHERE skill_name = %s AND project_id = %s AND user_id IS NULL", [skill_name, project_id])
-    else:
-        # Log or handle unknown cases
-        print("Skill delete failed: No valid user_id or project_id.")
-        return redirect('/users/skills')
-
+    if uid and not pid:
+        s.cur.execute("DELETE FROM RV_Skill WHERE skill_name=%s AND user_id=%s AND project_id IS NULL", [name,uid])
+    elif pid and not uid:
+        s.cur.execute("DELETE FROM RV_Skill WHERE skill_name=%s AND project_id=%s AND user_id IS NULL", [name,pid])
     return redirect('/users/skills')
 
-
-
-
-
-##################### STUDENT ################################
-@app.route('/student/my_skills', methods=['GET', 'POST'])
+#===============================================================================
+# Student skill management
+#===============================================================================
+@app.route('/student/my_skills', methods=['GET','POST'])
 def my_skills():
-    if checkSession() == False or session['user']['role'] != 'student':
-        return redirect('/login')
+    """Students manage their personal skill list."""
+    if not checkSession() or session['user']['role']!='student': return redirect('/login')
+    uid = session['user']['user_id']; msg=''; s=skill()
+    if request.method=='POST':
+        s.cur.execute("DELETE FROM RV_Skill WHERE user_id=%s AND project_id IS NULL", [uid])
+        for i,name in enumerate(request.form.getlist('skills')):
+            name=name.strip()
+            if name and i<5:
+                s.set({'skill_name':name,'user_id':uid,'project_id':None}); s.insert()
+        msg='Skills updated successfully.'
+    s.cur.execute("SELECT skill_name FROM RV_Skill WHERE user_id=%s AND project_id IS NULL", [uid])
+    skills=[r['skill_name'] for r in s.cur.fetchall()]
+    return render_template('student/manage_skills.html', skills=skills, msg=msg)
 
-    uid = session['user']['user_id']
-    msg = ''
-    s = skill()
-
-    if request.method == 'POST':
-        # Delete old skills
-        s.cur.execute("DELETE FROM RV_Skill WHERE user_id = %s AND project_id IS NULL", [uid])
-
-        # Insert new skills
-        skill_inputs = request.form.getlist("skills")
-        count = 0
-        for name in skill_inputs:
-            if name.strip():
-                count += 1
-                if count > 5:
-                    break
-                s.set({
-                    'skill_name': name.strip(),
-                    'user_id': uid,
-                    'project_id': None
-                })
-                s.insert()
-
-        msg = "Skills updated successfully."
-
-    # Fetch existing skills
-    s.cur.execute("SELECT skill_name FROM RV_Skill WHERE user_id = %s AND project_id IS NULL", [uid])
-    skills = [row['skill_name'] for row in s.cur.fetchall()]
-
-    return render_template("student/manage_skills.html", skills=skills, msg=msg)
-
-######################### PROFESSOR ###############################
-
-@app.route('/applications/view_for_professor', methods=['GET', 'POST'])
+#===============================================================================
+# Professor views applicants for their projects
+#===============================================================================
+@app.route('/applications/view_for_professor', methods=['GET','POST'])
 def view_applicants_for_professor():
-    if checkSession() == False or session['user']['role'] != 'professor':
-        return redirect('/login')
-
-    prof_id = session['user']['user_id']
-    a = application()
-
-    # Get all applications to this professor's posted projects
+    """Professors view and rate applicants based on skill match."""
+    if not checkSession() or session['user']['role']!='professor': return redirect('/login')
+    prof_id=session['user']['user_id']; a=application()
     a.cur.execute("""
         SELECT a.app_id, a.status, a.applicant_id, a.project_id,
-               p.title AS project_title,
-               u.user_name AS applicant_name,
-               u.resume_path
+               p.title AS project_title, u.user_name AS applicant_name, u.resume_path
         FROM RV_Application a
-        JOIN RV_Project p ON a.project_id = p.project_id
-        JOIN RV_User u ON a.applicant_id = u.user_id
-        WHERE p.posted_by = %s
+        JOIN RV_Project p ON a.project_id=p.project_id
+        JOIN RV_User u ON a.applicant_id=u.user_id
+        WHERE p.posted_by=%s
         ORDER BY p.project_id, a.app_date DESC
     """, [prof_id])
-    
-    applications = a.cur.fetchall()
-    s = skill()
-
+    applications=a.cur.fetchall(); s=skill()
     for app in applications:
-        #  Student's personal skills
-        s.cur.execute("""
-            SELECT skill_name 
-            FROM RV_Skill 
-            WHERE user_id = %s AND project_id IS NULL
-            LIMIT 5
-        """, [app['applicant_id']])
-        student_skills = [row['skill_name'].strip().lower() for row in s.cur.fetchall()]
-
-        #  Project's required skills
-        s.cur.execute("""
-            SELECT skill_name 
-            FROM RV_Skill 
-            WHERE project_id = %s AND user_id IS NULL
-        """, [app['project_id']])
-        project_skills = [row['skill_name'].strip().lower() for row in s.cur.fetchall()]
-
-        #  Skill match %
-        matches = set(student_skills) & set(project_skills)
-        total_required = len(project_skills)
-        match_percent = int((len(matches) / total_required) * 100) if total_required > 0 else 0
-
-        # Attach to record
-        app['skills'] = student_skills
-        app['skill_match'] = match_percent
-
-    return render_template("applications/view_applicants.html", applications=applications)
-
-
-
+        s.cur.execute("SELECT skill_name FROM RV_Skill WHERE user_id=%s AND project_id IS NULL LIMIT 5", [app['applicant_id']])
+        student_skills=[r['skill_name'].lower() for r in s.cur.fetchall()]
+        s.cur.execute("SELECT skill_name FROM RV_Skill WHERE project_id=%s AND user_id IS NULL", [app['project_id']])
+        project_skills=[r['skill_name'].lower() for r in s.cur.fetchall()]
+        matches=set(student_skills)&set(project_skills)
+        app['skills']=student_skills
+        app['skill_match']=int((len(matches)/len(project_skills))*100) if project_skills else 0
+    return render_template('applications/view_applicants.html', applications=applications)
 
 @app.route('/applications/update_status', methods=['POST'])
 def update_application_status():
-    if session['user']['role'] != 'professor':
-        return redirect('/login')
-
-    app_id = request.form.get('app_id')
-    new_status = request.form.get('status')
-
-    if not app_id or new_status not in ['pending', 'accepted', 'rejected']:
-        return redirect('/applications/manage')
-
-    a = application()
-    a.getById(app_id)
-
-    if not a.data:
-        return redirect('/applications/manage')
-
-    a.data[0]['status'] = new_status
-    a.update()
-
+    """Professors update application status (accept/reject)."""
+    if session.get('user',{}).get('role')!='professor': return redirect('/login')
+    aid=request.form.get('app_id'); new=request.form.get('status')
+    if not aid or new not in ['pending','accepted','rejected']: return redirect('/applications/manage')
+    a=application(); a.getById(aid)
+    if a.data:
+        a.data[0]['status']=new; a.update()
     return redirect('/applications/manage')
 
+#===============================================================================
+# Admin dashboard
+#===============================================================================
+@app.route('/users/dashboard')
+def user_dashboard():
+    """Admin dashboard showing counts and summaries."""
+    if not checkSession() or session['user']['role']!='admin': return redirect('/login')
+    data={}
+    u=user(); u.cur.execute("SELECT COUNT(*) AS count FROM RV_User WHERE role!='admin'")
+    data['user_count']=u.cur.fetchone()['count']
+    u.cur.execute("""
+        SELECT role, COUNT(*) AS count FROM RV_User
+        WHERE role IN ('student','professor') GROUP BY role
+    """)
+    for r in u.cur.fetchall(): data[f"{r['role']}_count"]=r['count']
+    s=skill(); s.cur.execute("SELECT skill_name, COUNT(*) AS count FROM RV_Skill GROUP BY skill_name ORDER BY count DESC LIMIT 5")
+    data['top_skills']=s.cur.fetchall()
+    p=project(); p.cur.execute("SELECT u.user_name, COUNT(*) AS count FROM RV_Project p JOIN RV_User u ON p.posted_by=u.user_id GROUP BY u.user_name ORDER BY count DESC")
+    data['projects_per_professor']=p.cur.fetchall()
+    p.cur.execute("SELECT COUNT(*) AS total FROM RV_Project"); data['total_projects'] = p.cur.fetchone()['total']
+    a=application(); a.cur.execute("SELECT status, COUNT(*) AS count FROM RV_Application GROUP BY status")
+    data['application_status']=a.cur.fetchall()
+    return render_template('users/dashboard.html', data=data)
 
-
-
-# endpoint route for static files
+#===============================================================================
+# Static file serving
+#===============================================================================
 @app.route('/static/<path:path>')
 def send_static(path):
+    """Serve static files from the 'static' directory."""
     return send_from_directory('static', path)
 
-#standalone function to be called when we need to check if a user is logged in.
-def checkSession():
-    if 'active' in session.keys():
-        timeSinceAct = time.time() - session['active']
-        #print(timeSinceAct)
-        if timeSinceAct > 500:
-            session['msg'] = 'Your session has timed out.'
-            return False
-        else:
-            session['active'] = time.time()
-            return True
-    else:
-        return False   
-
-
+#===============================================================================
+# Application entry point
+#===============================================================================
 if __name__ == '__main__':
-   app.run(host='127.0.0.1',debug=True)   
+    # Run the Flask development server
+    app.run(host='127.0.0.1', debug=True)
